@@ -64,7 +64,6 @@ void MainWindow::updateProgressBarAndTreeWidget(QVector<QPair<QString, QVector<Q
     {
         QTreeWidgetItem* group = addGroup();
         group->setText(0, "[" + QString::number(files[i].second.size()) + " match(es)] " + files[i].first);
-        //group->setFlags(group->flags() & ~Qt::);
 
         for (auto match : files[i].second)
         {
@@ -448,8 +447,6 @@ void MainWindow::searchForString()
     watcher.setFuture(QtConcurrent::map(distributedTrigrams, [this](QVector<QPair<QString, QVector<quint64> > > &files) { search(files); }));
     progressBar.exec();
     watcher.waitForFinished();
-
-    //search(distributedTrigrams[0]);
 
     ui->statusBar->showMessage("Search finished");
     ui->searchLineEdit->setDisabled(false);
