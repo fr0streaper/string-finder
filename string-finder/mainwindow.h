@@ -7,6 +7,7 @@
 #include <QVector>
 #include <QMutex>
 #include <QFutureWatcher>
+#include <QFileSystemWatcher>
 #include <QSet>
 #include <QMap>
 
@@ -31,12 +32,14 @@ public:
     QVector<QVector<QString> > distributeFiles(QVector<QString> &filePaths);
     quint64 trigramCharactersToNumber(QString trigram);
     void calculateTrigrams(QVector<QString> &filePaths);
+    void index();
 
 private slots:
     void selectAndIndexDirectory();
     void searchForString();
     void cancelTrigrams();
     void cancelSearch();
+    void filesystemModified(const QString &path);
 
 private:
     Ui::MainWindow *ui;
@@ -46,6 +49,7 @@ private:
 
     bool isDirectoryIndexed, trigramsCancelled, searchCancelled;
     QFutureWatcher<void> watcher;
+    QFileSystemWatcher filesystemWatcher;
     QVector<QVector<QPair<QString, QVector<quint64> > > > distributedTrigrams;
 };
 

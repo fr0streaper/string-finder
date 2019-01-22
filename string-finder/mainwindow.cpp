@@ -21,6 +21,7 @@ MainWindow::MainWindow(QWidget *parent) :
     filesProcessed(0),
     filesUnreadable(0),
     searchCancelled(false),
+    filesystemWatcher(this),
     trigramsCancelled(false),
     isDirectoryIndexed(false)
 {
@@ -29,6 +30,9 @@ MainWindow::MainWindow(QWidget *parent) :
     setWindowTitle("String finder");
     ui->treeWidget->setHeaderLabel("Matches found in current directory");
     ui->statusBar->showMessage("Choose a directory to find your string");
+
+    connect(&filesystemWatcher, SIGNAL(fileChanged(QString)), this, SLOT(filesystemModified(QString)));
+    connect(&filesystemWatcher, SIGNAL(directoryChanged(QString)), this, SLOT(filesystemModified(QString)));
 
     connect(ui->actionSearch, &QAction::triggered, this, &MainWindow::searchForString);
     connect(ui->actionSelect_and_index_directory, &QAction::triggered, this, &MainWindow::selectAndIndexDirectory);
@@ -225,6 +229,7 @@ QVector<QVector<QString> > MainWindow::distributeFiles(QVector<QString> &filePat
 
 QVector<QString> MainWindow::requestFilesRecursive(QString directoryPath)
 {
+    filesystemWatcher.addPath(directoryPath);
     QDir directory(directoryPath);
     QFileInfoList fileList = directory.entryInfoList(QDir::Files | QDir::NoSymLinks);
     QFileInfoList dirList = directory.entryInfoList(QDir::Dirs | QDir::NoSymLinks | QDir::NoDotAndDotDot);
@@ -232,6 +237,7 @@ QVector<QString> MainWindow::requestFilesRecursive(QString directoryPath)
     QVector<QString> recursiveList;
     for (QFileInfo file : fileList)
     {
+        filesystemWatcher.addPath(file.filePath());
         recursiveList.push_back(file.fileName());
     }
     for (QFileInfo dir : dirList)
@@ -251,17 +257,16 @@ QVector<QString> MainWindow::requestFilesRecursive(QString directoryPath)
     return recursiveList;
 }
 
-void MainWindow::selectAndIndexDirectory()
+void MainWindow::filesystemModified(const QString &path)
 {
-    //=== selecting directory
-    currentDirectory = QFileDialog::getExistingDirectory(this, "Select Directory for Scanning",
-                                                        QString(), QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
-    if (!QDir(currentDirectory).exists())
-    {
-        QMessageBox::critical(this, "String finder", "Chosen directory cannot be opened");
-        return;
-    }
-    ui->directoryLineEdit->setText(currentDirectory);
+    index();
+}
+
+void MainWindow::index()
+{
+    ui->treeWidget->clear();
+    ui->searchLineEdit->clear();
+
     isDirectoryIndexed = false;
     trigramsCancelled = false;
 
@@ -301,6 +306,23 @@ void MainWindow::selectAndIndexDirectory()
 
     isDirectoryIndexed = true;
     ui->statusBar->showMessage("Search for matches or choose another directory");
+}
+
+void MainWindow::selectAndIndexDirectory()
+{
+    //=== selecting directory
+    currentDirectory = QFileDialog::getExistingDirectory(this, "Select Directory for Scanning",
+                                                        QString(), QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
+    if (!QDir(currentDirectory).exists())
+    {
+        QMessageBox::critical(this, "String finder", "Chosen directory cannot be opened");
+        return;
+    }
+
+    ui->directoryLineEdit->setText(currentDirectory);
+
+    //=== indexing
+    index();
 }
 
 quint64 MainWindow::trigramCharactersToNumber(QString trigram)
